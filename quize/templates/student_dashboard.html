@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Portal - QCMS</title>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .header h1 { margin: 0; color: #2c3e50; font-size: 24px; }
+        .logout-btn { background: #e74c3c; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; transition: 0.3s; }
+        .logout-btn:hover { background: #c0392b; }
+
+        /* WINNER BANNER (Only shows if there is a winner) */
+        .winner-banner { 
+            background: linear-gradient(135deg, #f1c40f, #f39c12); 
+            color: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin-bottom: 30px; 
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+            animation: popIn 0.5s ease;
+        }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* Quiz Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: transform 0.2s; border-top: 5px solid #3498db; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .card h3 { margin-top: 0; color: #34495e; }
+        .btn-start { display: block; text-align: center; background: #27ae60; color: white; text-decoration: none; padding: 12px; margin-top: 15px; border-radius: 5px; font-weight: bold; }
+        .btn-start:hover { background: #219150; }
+
+        /* History Table */
+        .history-box { background: white; padding: 25px; border-radius: 10px; margin-top: 40px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        th { color: #7f8c8d; font-size: 14px; text-transform: uppercase; }
+        .status-completed { color: #27ae60; font-weight: bold; }
+        .status-suspended { color: #e74c3c; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Welcome, {{ name }}</h1>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+
+    {% if winner_announce %}
+    <div class="winner-banner">
+        <h2 style="margin:0;">🏆 CONGRATULATIONS!</h2>
+        <p style="font-size: 18px; margin: 10px 0;">The top scorer for this session is:</p>
+        <h1 style="margin:0; text-transform: uppercase; font-size: 36px;">{{ winner_announce }}</h1>
+    </div>
+    {% endif %}
+
+    <meta http-equiv="refresh" content="60">
+
+    <h2>Available Exams</h2>
+    <div class="grid">
+        {% for q in quizzes %}
+        <div class="card" id="card-{{ q.quiz_id }}">
+            <h3>{{ q.title }}</h3>
+            <p style="font-size:12px; color:#1cb5b0;">
+                ⏳ {{ q.duration_minutes }} Mins | 🎯 {{ q.total_marks }} Marks
+            </p>
+            
+            <p id="status-{{ q.quiz_id }}" style="font-weight:bold; color: {{ '#e74c3c' if q.is_locked else '#27ae60' }}">
+                {{ q.time_msg }}
+            </p>
+
+            <div id="btn-area-{{ q.quiz_id }}">
+                {% if q.is_locked %}
+                    <button disabled class="btn-locked" style="background:#1b0f0f; width:100%; padding:12px; border:none; color:white; font-weight:bold; cursor:not-allowed;">
+                        Locked (<span class="countdown" data-seconds="{{ q.seconds_left }}">{{ q.seconds_left }}s</span>)
+                    </button>
+                {% else %}
+                    <a href="/quiz/{{ q.quiz_id }}" class="btn-start" style="display:block; text-align:center; background:#27ae60; color:white; text-decoration:none; padding:12px; border-radius:5px; font-weight:bold;">
+                        Start Exam
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        // --- REAL-TIME COUNTDOWN LOGIC ---
+        function startCountdowns() {
+            const timers = document.querySelectorAll('.countdown');
+            
+            timers.forEach(timer => {
+                let seconds = parseInt(timer.getAttribute('data-seconds'));
+                
+                const interval = setInterval(() => {
+                    seconds--;
+                    
+                    // Update Text
+                    if (seconds > 60) {
+                        let m = Math.floor(seconds / 60);
+                        timer.innerText = m + "m " + (seconds % 60) + "s";
+                    } else {
+                        timer.innerText = seconds + "s";
+                    }
+
+                    // If Time Reached 0 -> UNLOCK INSTANTLY
+                    if (seconds <= 0) {
+                        clearInterval(interval);
+                        // Find parent ID to unlock
+                        let btn = timer.closest('button');
+                        let container = btn.parentElement; 
+                        let card = container.parentElement;
+                        
+                        // Replace Button HTML
+                        container.innerHTML = `
+                            <a href="#" onclick="window.location.reload()" style="display:block; text-align:center; background:#27ae60; color:white; text-decoration:none; padding:12px; border-radius:5px; font-weight:bold; animation: pop 0.5s;">
+                                Click to Start!
+                            </a>
+                        `;
+                        
+                        // Update Status Text
+                        let statusText = card.querySelector('p[id^="status-"]');
+                        statusText.innerText = "Live Now";
+                        statusText.style.color = "#27ae60";
+                    }
+                }, 1000);
+            });
+        }
+        
+        // Start timers when page loads
+        startCountdowns();
+    </script>
+    <div class="history-box">
+        <h3>My Recent Results</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Exam</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in history %}
+                <tr>
+                    <td>{{ h.title }}</td>
+                    <td>{{ h.total_score }}</td>
+                    <td class="{{ 'status-completed' if h.status == 'Completed' else 'status-suspended' }}">
+                        {{ h.status }}
+                    </td>
+                    <td>
+                        {% if h.status == 'Completed' %}
+                            {% if h.certificate_approved == 1 %}
+                                <a href="/download/cert/{{ h.attempt_id }}" class="btn-start" style="padding:5px 10px; background:#3498db; font-size:12px; width:auto; display:inline-block;">Download Cert</a>
+                            {% else %}
+                                <button disabled style="background:#ccc; border:none; padding:5px 10px; color:white; font-size:12px; border-radius:4px; cursor:not-allowed;">Pending Approval</button>
+                            {% endif %}
+                        {% else %}
+                            <span style="color:#bdc3c7;">--</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4">No exams taken yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>

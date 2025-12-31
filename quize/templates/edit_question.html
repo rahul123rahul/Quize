@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Question</title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; background: #f4f4f9; }
+        .box { background: white; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        input, select, textarea { width: 100%; padding: 10px; margin: 5px 0 15px 0; border: 1px solid #ccc; border-radius: 4px; }
+        label { font-weight: bold; }
+        .btn-save { background: #27ae60; color: white; padding: 10px 20px; border: none; cursor: pointer; width: 100%; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>✏️ Edit Question ID: {{ q.question_id }}</h2>
+    <form method="POST">
+        <label>Question:</label>
+        <textarea name="q_text" rows="3" required>{{ q.question_text }}</textarea>
+
+        <label>Option A:</label>
+        <input type="text" name="opt_a" value="{{ q.option_a }}" required>
+
+        <label>Option B:</label>
+        <input type="text" name="opt_b" value="{{ q.option_b }}" required>
+
+        <label>Option C:</label>
+        <input type="text" name="opt_c" value="{{ q.option_c }}" required>
+
+        <label>Option D:</label>
+        <input type="text" name="opt_d" value="{{ q.option_d }}" required>
+
+        <div style="display:flex; gap:10px;">
+            <div style="flex:1">
+                <label>Correct Option:</label>
+                <select name="correct">
+                    <option value="A" {% if q.correct_option == 'A' %}selected{% endif %}>A</option>
+                    <option value="B" {% if q.correct_option == 'B' %}selected{% endif %}>B</option>
+                    <option value="C" {% if q.correct_option == 'C' %}selected{% endif %}>C</option>
+                    <option value="D" {% if q.correct_option == 'D' %}selected{% endif %}>D</option>
+                </select>
+            </div>
+            <div style="flex:1">
+                <label>Marks:</label>
+                <input type="number" name="marks" value="{{ q.marks }}" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-save">Save Changes</button>
+        <br><br>
+        <a href="/admin" style="text-align:center; display:block; color:red;">Cancel</a>
+    </form>
+</div>
+
+</body>
+</html>

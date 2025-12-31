@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Coordinator Dashboard</title>
+
+<style>
+/* CSS Styles (Simplified) */
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:"Segoe UI",sans-serif;background:#f0f2f5;display:flex}.sidebar{width:250px;background:#2c3e50;color:white;height:100vh;padding:20px;position:fixed}.sidebar a{display:block;color:white;text-decoration:none;padding:10px;margin:5px 0}.sidebar a:hover{background:#3498db}.content{margin-left:250px;padding:30px;width:100%}.card{background:white;padding:20px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1);margin-bottom:20px}input,select,textarea{width:100%;padding:10px;margin:5px 0;border:1px solid #ccc;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>Coordinator</h2>
+    <a href="#upload">Upload Questions</a>
+    <a href="#manualq">Add Question</a>
+    <a href="#questions">Question Bank</a>
+    <a href="#students">Registered Students</a>
+    <a href="/logout" style="background:#c0392b; text-align:center; margin-top:20px;">Logout</a>
+</div>
+
+<div class="content">
+    <h1>Welcome, {{ name }}</h1>
+
+    <div class="card" style="background: linear-gradient(135deg, #e8f6f3 0%, #d5efea 100%); border-left: 5px solid #16a085;">
+                    <h3 style="margin-top:0; color:#16a085;">🔗 Invite Students</h3>
+                    <p style="color:#117a65; margin-bottom:15px;">Share this registration link via:</p>
+                    
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <input type="text" id="regLink" readonly style="flex:1; min-width:200px;">
+                        
+                        <button onclick="copyLink()" style="background: #2c3e50; color:white; border:none; padding:12px 15px; border-radius:6px; cursor:pointer; font-weight:600;">
+                            📋 Copy
+                        </button>
+                    </div>
+                    <p id="copyMsg" style="color:#27ae60; font-size:13px; display:none; margin-top:10px; font-weight:600;">✅ Link Copied!</p>
+                </div>
+
+                <script>
+                    // 1. Automatically set the correct URL
+                    window.onload = function() {
+                        var baseUrl = window.location.origin; // Gets http://localhost:5000 or your domain
+                        document.getElementById("regLink").value = baseUrl + "/register";
+                    };
+
+                    // 2. Copy Function
+                    function copyLink() {
+                        var copyText = document.getElementById("regLink");
+                        copyText.select();
+                        copyText.setSelectionRange(0, 99999); // Mobile support
+                        navigator.clipboard.writeText(copyText.value).then(() => {
+                            document.getElementById("copyMsg").style.display = "block";
+                            setTimeout(() => document.getElementById("copyMsg").style.display = "none", 2000);
+                        });
+                    }
+                </script>
+
+    <div class="card" id="upload">
+        <h3>Upload Questions (DOCX)</h3>
+        <form method="POST" action="/upload_docx" enctype="multipart/form-data">
+            <select name="quiz_id" required>
+                {% for q in quizzes %}<option value="{{ q.quiz_id }}">{{ q.title }}</option>{% endfor %}
+            </select>
+            <input type="file" name="file" accept=".docx" required>
+            <button type="submit" style="background:#3498db; color:white; padding:10px; border:none;">Upload</button>
+        </form>
+        
+    </div>
+
+    <div class="card" id="manualq">
+        <h3>Add Question</h3>
+        <form method="POST" action="/admin/add_manual_question">
+            <select name="quiz_id" required>
+                {% for q in quizzes %}<option value="{{ q.quiz_id }}">{{ q.title }}</option>{% endfor %}
+            </select>
+            <select name="q_type" id="q_type" onchange="toggleFields()">
+                <option value="MCQ">MCQ</option><option value="CODE">Coding</option>
+            </select>
+            <textarea name="q_text" placeholder="Question" required></textarea>
+            <div id="mcq_fields">
+                <input name="opt_a" placeholder="A"><input name="opt_b" placeholder="B">
+                <input name="opt_c" placeholder="C"><input name="opt_d" placeholder="D">
+                <select name="correct_opt"><option>A</option><option>B</option><option>C</option><option>D</option></select>
+            </div>
+            <div id="code_fields" style="display:none">
+                <textarea name="test_input" placeholder="Input"></textarea><textarea name="test_output" placeholder="Output"></textarea>
+            </div>
+            <button type="submit" style="background:#27ae60; color:white; padding:10px; border:none;">Add</button>
+        </form>
+    </div>
+
+    <div class="card" id="questions">
+        <h3>📝 Question Bank</h3>
+        <select id="sessionFilter" onchange="filterQuestions()">
+            <option value="all">Show All</option>
+            <option value="0">General</option>
+            {% for z in quizzes %}<option value="{{ z.quiz_id }}">{{ z.title }}</option>{% endfor %}
+        </select>
+        <form id="bulkForm" action="/admin/delete_bulk_questions" method="POST">
+            <div style="max-height:300px; overflow-y:auto;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead><tr><th><input type="checkbox" onclick="toggleAll(this)"></th><th>Question</th><th>Session</th></tr></thead>
+                    <tbody>
+                        {% for q in questions %}
+                        <tr class="q-row" data-session="{{ q.quiz_id_safe }}">
+                            <td><input type="checkbox" name="q_ids" value="{{ q.question_id }}"></td>
+                            <td>{{ q.question_text }}</td>
+                            <td>{{ q.session_name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button onclick="if(confirm('Delete?')) document.getElementById('bulkForm').submit()" style="background:red; color:white; padding:5px; margin-top:10px;">Delete Selected</button>
+        </form>
+    </div>
+
+    <div class="card" id="students">
+        <h3>👥 Registered Students</h3>
+        <table style="width:100%; border-collapse:collapse;">
+            <thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for s in students %}
+                <tr>
+                    <td style="padding:10px; border-bottom:1px solid #ddd;">{{ s.full_name }}</td>
+                    <td style="padding:10px; border-bottom:1px solid #ddd;">{{ s.email }}</td>
+                    <td style="padding:10px; border-bottom:1px solid #ddd;">
+                        {% if s.is_blocked %}<span style="color:red;">Blocked</span>{% else %}<span style="color:green;">Active</span>{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3">No students found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+function toggleFields(){
+    let t=document.getElementById("q_type").value;
+    document.getElementById("mcq_fields").style.display=t==="MCQ"?"block":"none";
+    document.getElementById("code_fields").style.display=t==="CODE"?"block":"none";
+}
+function filterQuestions() {
+    var sel = String(document.getElementById("sessionFilter").value);
+    var rows = document.getElementsByClassName("q-row");
+    for (var i=0; i<rows.length; i++) {
+        var rowSession = String(rows[i].getAttribute("data-session"));
+        rows[i].style.display = (sel === "all" || rowSession === sel) ? "" : "none";
+    }
+}
+function toggleAll(src) {
+    document.getElementsByName('q_ids').forEach(c => c.checked = src.checked);
+}
+</script>
+
+</body>
+</html>

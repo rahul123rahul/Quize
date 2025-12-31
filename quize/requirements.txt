@@ -1,0 +1,6 @@
+flask
+pymysql
+python-docx
+reportlab
+qrcode[pil]
+requests
